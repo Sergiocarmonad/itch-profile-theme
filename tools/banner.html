@@ -1,0 +1,152 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Banner render</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@800&family=VT323&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&text=%E8%87%AA%E5%8B%95%E8%B2%A9%E5%A3%B2%E6%A9%9F&display=swap">
+<style>body { margin: 0; background: #000; } canvas { display: block; }</style>
+<canvas id="c" width="960" height="260"></canvas>
+<p id="status" style="color:#41ff7f;font:14px monospace">rendering…</p>
+<script>
+/* itch.io profile banner, 960 × 260. Shown at its natural size, so no 2x. */
+const C = {
+  dark: "#010201", glass: "#040a05", housing: "#121410", edge: "#23271f",
+  phosphor: "#41ff7f", dim: "#2a9e50", faint: "#10351c",
+  sodium: "#ff8a1f", magenta: "#ff2bd6", cyan: "#29e6ff"
+};
+const W = 960, H = 260;
+const ctx = document.getElementById("c").getContext("2d");
+
+function glow(color, blur, fn) {
+  ctx.save(); ctx.shadowColor = color; ctx.shadowBlur = blur; fn(); ctx.restore();
+}
+
+async function draw() {
+  await Promise.all([
+    document.fonts.load('800 88px "Big Shoulders Stencil Display"'),
+    document.fonts.load('26px "VT323"'),
+    document.fonts.load('500 12px "IBM Plex Mono"'),
+    document.fonts.load('20px "DotGothic16"', "自動販売機")
+  ]);
+
+  // background: dark room, faint green glass toward the left
+  ctx.fillStyle = C.dark; ctx.fillRect(0, 0, W, H);
+  let g = ctx.createRadialGradient(260, 130, 20, 260, 130, 520);
+  g.addColorStop(0, "rgba(65,255,127,0.07)"); g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  // distant city: sparse dim lights behind the machine
+  const rnd = (s => () => (s = (s * 16807) % 2147483647) / 2147483647)(42);
+  ctx.fillStyle = "#070a07";
+  for (let x = 600; x < W; x += 18 + rnd() * 20) {
+    const h = 60 + rnd() * 120, w = 14 + rnd() * 22;
+    ctx.fillRect(x, H - h, w, h);
+    for (let i = 0; i < 4; i++) {
+      if (rnd() < 0.5) continue;
+      ctx.fillStyle = rnd() < 0.7 ? "rgba(255,138,31,0.35)" : "rgba(65,255,127,0.3)";
+      ctx.fillRect(x + 3 + rnd() * (w - 6), H - h + 8 + rnd() * (h - 16), 2, 2);
+      ctx.fillStyle = "#070a07";
+    }
+  }
+  // sodium smog on the horizon
+  ctx.save(); ctx.translate(800, H); ctx.scale(3, 1);
+  g = ctx.createRadialGradient(0, 0, 0, 0, 0, 80);
+  g.addColorStop(0, "rgba(255,138,31,0.12)"); g.addColorStop(1, "rgba(255,138,31,0)");
+  ctx.fillStyle = g; ctx.fillRect(-80, -80, 160, 80);
+  ctx.restore();
+
+  // ---- text block ----
+  const X = 48;
+  ctx.textBaseline = "alphabetic";
+  ctx.font = '24px "VT323"'; ctx.fillStyle = C.dim;
+  ctx.fillText("C:\\USERS> WHOAMI", X, 66);
+
+  ctx.font = '800 92px "Big Shoulders Stencil Display"';
+  glow("rgba(65,255,127,0.55)", 18, () => { ctx.fillStyle = C.phosphor; ctx.fillText("SERGIO CARMONA", X, 152); });
+  ctx.fillStyle = C.phosphor; ctx.fillText("SERGIO CARMONA", X, 152);
+
+  // roles, with dim separators
+  ctx.font = '28px "VT323"';
+  let x = X;
+  ["GAME DEVELOPER", "SOUND DESIGNER", "MUSIC PRODUCER"].forEach((r, i) => {
+    if (i) { ctx.fillStyle = C.dim; ctx.fillText(" · ", x, 194); x += ctx.measureText(" · ").width; }
+    glow("rgba(65,255,127,0.4)", 6, () => { ctx.fillStyle = C.phosphor; ctx.fillText(r, x, 194); });
+    x += ctx.measureText(r).width;
+  });
+  // blinking-cursor block
+  ctx.fillStyle = C.phosphor; ctx.fillRect(x + 8, 174, 12, 22);
+
+  // ---- vending machine, right side ----
+  const mx = 770, my = 22, mw = 150, mh = H - my;
+  ctx.fillStyle = C.housing;
+  ctx.beginPath(); ctx.roundRect(mx, my, mw, mh + 10, [12, 12, 0, 0]); ctx.fill();
+  ctx.strokeStyle = C.edge; ctx.lineWidth = 1; ctx.stroke();
+  // magenta glow spilling onto the floor
+  g = ctx.createRadialGradient(mx + mw / 2, H, 10, mx + mw / 2, H, 160);
+  g.addColorStop(0, "rgba(255,43,214,0.18)"); g.addColorStop(1, "rgba(255,43,214,0)");
+  ctx.fillStyle = g; ctx.fillRect(mx - 160, H - 80, mw + 320, 80);
+
+  // sign
+  const sx = mx + 10, sy = my + 10, sw = mw - 20, sh = 34;
+  ctx.fillStyle = "#0a0309"; ctx.fillRect(sx, sy, sw, sh);
+  glow("rgba(255,43,214,0.9)", 14, () => { ctx.strokeStyle = C.magenta; ctx.lineWidth = 1.5; ctx.strokeRect(sx + .5, sy + .5, sw - 1, sh - 1); });
+  ctx.font = '20px "DotGothic16"'; ctx.textAlign = "center";
+  glow("rgba(255,43,214,0.9)", 10, () => { ctx.fillStyle = C.magenta; ctx.fillText("自動販売機", sx + sw / 2, sy + 24); });
+  ctx.textAlign = "left";
+
+  // glass front with slots
+  const gx = mx + 10, gy = sy + sh + 10, gw = 96, gh = 150;
+  ctx.fillStyle = "#030604"; ctx.fillRect(gx, gy, gw, gh);
+  g = ctx.createLinearGradient(0, gy, 0, gy + gh);
+  g.addColorStop(0, "rgba(41,230,255,0.10)"); g.addColorStop(1, "rgba(41,230,255,0)");
+  ctx.fillStyle = g; ctx.fillRect(gx, gy, gw, gh);
+  const cols = [C.magenta, C.cyan, C.sodium, C.phosphor];
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 3; c++) {
+      const px = gx + 8 + c * 30, py = gy + 8 + r * 36;
+      const col = cols[(r * 3 + c) % 4];
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.roundRect(px + 4, py, 14, 24, [5, 5, 2, 2]); ctx.fill();
+      ctx.globalAlpha = 0.35; ctx.fillStyle = "#fff"; ctx.fillRect(px + 7, py + 3, 2, 18);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = C.edge; ctx.fillRect(gx + 2, py + 28, gw - 4, 3); // shelf
+    }
+  }
+  // glass shine
+  ctx.save(); ctx.beginPath(); ctx.rect(gx, gy, gw, gh); ctx.clip();
+  ctx.fillStyle = "rgba(255,255,255,0.05)";
+  ctx.beginPath(); ctx.moveTo(gx + 20, gy); ctx.lineTo(gx + 40, gy); ctx.lineTo(gx + 0, gy + gh); ctx.lineTo(gx - 20, gy + gh); ctx.fill();
+  ctx.restore();
+
+  // coin panel
+  const cx = gx + gw + 6, cy = gy;
+  ctx.fillStyle = "#020a04"; ctx.fillRect(cx, cy, 28, 20);
+  ctx.font = '13px "VT323"'; ctx.fillStyle = C.phosphor; ctx.fillText("100", cx + 6, cy + 14);
+  ctx.fillStyle = "#000"; ctx.fillRect(cx + 12, cy + 30, 4, 16);
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 2; c++) {
+    ctx.fillStyle = "#1a1d18"; ctx.beginPath(); ctx.arc(cx + 8 + c * 12, cy + 62 + r * 12, 4, 0, Math.PI * 2); ctx.fill();
+  }
+  // tray
+  ctx.fillStyle = "#000"; ctx.fillRect(gx + 14, gy + gh + 10, gw - 28, 16);
+  ctx.font = '500 8px "IBM Plex Mono"'; ctx.fillStyle = C.dim; ctx.fillText("PUSH", gx + gw / 2 - 10, gy + gh + 21);
+
+  // magenta neon tube along the bottom
+  glow("rgba(255,43,214,0.9)", 12, () => { ctx.fillStyle = C.magenta; ctx.fillRect(0, H - 3, W, 2); });
+
+  // scanlines + grain + vignette
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+  const img = ctx.getImageData(0, 0, W, H), d = img.data;
+  for (let i = 0; i < d.length; i += 4) { const n = (rnd() - 0.5) * 14; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+  ctx.putImageData(img, 0, 0);
+  g = ctx.createRadialGradient(W / 2, H / 2, H * 0.6, W / 2, H / 2, W * 0.62);
+  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.55)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  // hand the PNG to the local render server
+  const blob = await new Promise(r => ctx.canvas.toBlob(r, "image/png"));
+  const res = await fetch("/save", { method: "POST", body: blob });
+  document.getElementById("status").textContent = res.ok ? "saved banner.png" : "save failed";
+}
+draw();
+</script>
